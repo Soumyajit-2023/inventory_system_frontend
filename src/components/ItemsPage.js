@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import ItemCard from "./ItemCard";
 import Cart from "./Cart";
 
-const BACKEND_URL = "/api/item-store/test-items";
+const BACKEND_URL = "/inventory";
 
-const ItemsPage = () => {
+const ItemsPage = ({ user }) => {
     const [items, setItems] = useState([]);
+    // Change cart to: array of {item, quantity}
     const [cart, setCart] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -27,13 +28,42 @@ const ItemsPage = () => {
             });
     }, []);
 
-    const handleAddToCart = (item) => {
-        setCart((c) => [...c, item]);
+    // Add/increment item in cart
+    const handleIncrement = (item) => {
+        setCart((oldCart) => {
+            // If item already exists, increment quantity
+            const idx = oldCart.findIndex((el) => el.item.name === item.name);
+            if (idx >= 0) {
+                return oldCart.map((el, i) =>
+                    i === idx ? { ...el, quantity: el.quantity + 1 } : el
+                );
+            } else {
+                return [...oldCart, { item, quantity: 1 }];
+            }
+        });
     };
-    const handleRemoveFromCart = (idx) => {
-        setCart((c) => c.filter((_, i) => i !== idx));
+    // Decrement item; if quantity = 1, remove from cart
+    const handleDecrement = (item) => {
+        setCart((oldCart) => {
+            const idx = oldCart.findIndex((el) => el.item.name === item.name);
+            if (idx >= 0) {
+                if (oldCart[idx].quantity > 1) {
+                    return oldCart.map((el, i) =>
+                        i === idx ? { ...el, quantity: el.quantity - 1 } : el
+                    );
+                } else {
+                    return oldCart.filter((_, i) => i !== idx);
+                }
+            }
+            return oldCart;
+        });
     };
+
     const handleClearCart = () => setCart([]);
+    // Remove item entirely
+    const handleRemoveFromCart = (name) => {
+        setCart((cart) => cart.filter((el) => el.item.name !== name));
+    };
 
     return (
         <div className="flex items-start min-h-screen px-4 py-8 md:px-12 bg-gradient-to-bl from-blue-50 to-blue-100">
@@ -61,22 +91,33 @@ const ItemsPage = () => {
                     ) : items.length === 0 ? (
                         <div className="text-gray-400 font-semibold m-8 col-span-full">No items found.</div>
                     ) : (
-                        items.map((item, i) => (
-                            <ItemCard
-                                key={i}
-                                image={item.imageUrl}
-                                name={item.name}
-                                description={item.description}
-                                price={item.price}
-                                onAddToCart={() => handleAddToCart(item)}
-                            />
-                        ))
+                        items.map((item, i) => {
+                            const cartEntry = cart.find((el) => el.item.name === item.name);
+                            const quantity = cartEntry ? cartEntry.quantity : 0;
+                            return (
+                                <ItemCard
+                                    key={i}
+                                    image={item.imageUrl}
+                                    name={item.name}
+                                    description={item.description}
+                                    price={item.price}
+                                    quantity={quantity}
+                                    onIncrement={() => handleIncrement(item)}
+                                    onDecrement={() => handleDecrement(item)}
+                                />
+                            );
+                        })
                     )}
                 </div>
             </div>
             <aside className="relative w-[340px] flex-shrink-0">
                 <div className="sticky top-8">
-                    <Cart items={cart} onRemove={handleRemoveFromCart} onClear={handleClearCart} />
+                    <Cart
+                        items={cart}
+                        onRemove={handleRemoveFromCart}
+                        onClear={handleClearCart}
+                        user={typeof user !== "undefined" ? user : null}
+                    />
                 </div>
             </aside>
         </div>
