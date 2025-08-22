@@ -19,6 +19,8 @@ const ItemsPage = ({ user }) => {
                 return res.json();
             })
             .then((data) => {
+                console.log(data);
+
                 setItems(data);
                 setLoading(false);
             })
